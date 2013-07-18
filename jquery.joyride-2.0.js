@@ -95,15 +95,37 @@
             e.preventDefault();
 
             if (settings.$li.next().length < 1) {
+
               methods.end();
+
             } else if (settings.timer > 0) {
+
               clearTimeout(settings.automate);
               methods.hide();
               methods.show();
               methods.startTimer();
+
             } else {
-              methods.hide();
-              methods.show();
+
+                // Check to see if the next thing is visible,
+                // otherwise wait for whatever appropriate user action
+                var next = settings.$li.next();
+                var nextClass = next.attr('data-class');
+                var nextId    = next.attr('data-id');
+
+                if (nextClass) {
+                    var nextElt = $('.'+nextClass);
+                    if (nextElt.length == 0 || !nextElt.is(":visible"))
+                        return;
+                } else if (nextId) {
+                    var nextElt = $('#'+nextId);
+                    if (nextElt.length == 0 || !nextElt.is(":visible"))
+                        return;
+                }
+
+                methods.hide();
+                methods.show();
+
             }
 
           });
@@ -376,6 +398,93 @@
       },
 
       pos_default : function (init) {
+
+          var fixed = settings.$li.attr('data-fixed');
+
+          var half_fold = Math.ceil(settings.$window.height() / 2);
+          var tip_position = settings.$next_tip.offset();
+          var $nub = $('.joyride-nub', settings.$next_tip);
+          var nub_height = Math.ceil($nub.outerHeight() / 2);
+          var toggle = init || false;
+
+          // tip must not be "display: none" to calculate position
+          if (toggle) {
+              settings.$next_tip.css('visibility', 'hidden');
+              settings.$next_tip.show();
+          }
+
+          if (!/body/i.test(settings.$target.selector)) {
+              
+              var top, left, nubPositionType;
+              var targetTop, targetLeft;
+
+              targetLeft = settings.$target.offset().left;
+              if (fixed) {
+                  targetTop = settings.$target.offset().top - $(window).scrollTop();
+              } else
+                  targetTop = settings.$target.offset().top;
+
+              if (methods.bottom()) {
+
+                  top  = targetTop + nub_height + settings.$target.outerHeight();
+                  left = targetLeft;
+                  nubPositionType = 'top';
+
+              } else if (methods.top()) {
+
+                  top  = targetTop - settings.$next_tip.outerHeight() - nub_height;
+                  left = targetLeft;
+                  nubPositionType = 'bottom';
+
+              } else if (methods.right()) {
+
+                  top  = targetTop;
+                  left = targetLeft + settings.$target.outerWidth();
+                  nubPositionType = 'left';
+
+              } else if (methods.left()) {
+
+                  top  = targetTop;
+                  left = targetLeft - settings.$next_tip.outerWidth() - nub_height;
+                  nubPositionType = 'right';
+
+              }
+
+              settings.$next_tip.css({ top: top, left: left });
+              if (fixed)
+                  settings.$next_tip.css({ position: 'fixed' });
+
+              methods.nub_position($nub, settings.tipSettings.nubPosition, nubPositionType);
+
+              if (!methods.visible(methods.corners(settings.$next_tip)) && settings.attempts < settings.tipSettings.tipLocationPattern.length) {
+
+                  $nub.removeClass('bottom')
+                      .removeClass('top')
+                      .removeClass('right')
+                      .removeClass('left');
+
+                  settings.tipSettings.tipLocation = settings.tipSettings.tipLocationPattern[settings.attempts];
+
+                  settings.attempts++;
+
+                  methods.pos_default(true);
+
+              }
+
+          } else if (settings.$li.length) {
+          
+              methods.pos_modal($nub);
+
+          }
+
+          if (toggle) {
+              settings.$next_tip.hide();
+              settings.$next_tip.css('visibility', 'visible');
+          }
+          
+      },
+
+      pos_fixed : function (init) {
         var half_fold = Math.ceil(settings.$window.height() / 2),
             tip_position = settings.$next_tip.offset(),
             $nub = $('.joyride-nub', settings.$next_tip),
